@@ -10,6 +10,7 @@ SSH_PORT=2222
 
 # یه رمز برای همه — SSH و OpenCode هر دو از همین استفاده می‌کنن
 SSH_PASSWORD=${SSH_PASSWORD:-changeme123}
+export OPENCODE_SERVER_USERNAME="root"
 export OPENCODE_SERVER_PASSWORD="$SSH_PASSWORD"
 
 # PATH همیشه global — opencode بعد از نصب اینجاست
