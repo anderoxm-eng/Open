@@ -8,15 +8,31 @@ APP_PORT=${PORT:-8080}
 SSH_PORT=2222
 [ "$APP_PORT" = "$SSH_PORT" ] && APP_PORT=8080
 
+# یه رمز برای همه — SSH و OpenCode هر دو از همین استفاده می‌کنن
 SSH_PASSWORD=${SSH_PASSWORD:-changeme123}
-OPENCODE_SERVER_PASSWORD=${OPENCODE_SERVER_PASSWORD:-$SSH_PASSWORD}
-export OPENCODE_SERVER_PASSWORD
+export OPENCODE_SERVER_PASSWORD="$SSH_PASSWORD"
+
+# PATH همیشه global — opencode بعد از نصب اینجاست
+export PATH="$HOME/.opencode/bin:$PATH"
+
+# جلوگیری از باز شدن مرورگر:
+# ۱. fake xdg-open که هیچ کاری نمی‌کنه
+mkdir -p /usr/local/bin
+cat > /usr/local/bin/xdg-open << 'XDGEOF'
+#!/bin/bash
+# headless stub — silently ignore browser-open requests
+exit 0
+XDGEOF
+chmod +x /usr/local/bin/xdg-open
+
+# ۲. متغیرهای محیطی headless
+export BROWSER=none
+export DISPLAY=""
 
 # ── Install OpenCode (once per container lifetime) ───
 if ! command -v opencode >/dev/null 2>&1; then
   echo "📥 Installing OpenCode..."
   curl -fsSL https://opencode.ai/install | bash 2>&1 | grep -i "installed\|successfully\|error" || true
-  export PATH="$HOME/.opencode/bin:$PATH"
   echo "✓ OpenCode installed"
 fi
 
@@ -43,6 +59,7 @@ echo "  App port : $APP_PORT"
 echo "  SSH port : $SSH_PORT"
 echo "  SSH user : root"
 echo "  SSH pass : $SSH_PASSWORD"
+echo "  OC  pass : $SSH_PASSWORD"
 echo "════════════════════════════════"
 
 # ── Service launcher helpers ─────────────────
@@ -54,9 +71,7 @@ start_sshd() {
 }
 
 start_app() {
-  export BROWSER=none
-  export DISPLAY=""
-  opencode web --port "$APP_PORT" &
+  opencode web --port "$APP_PORT" --hostname 0.0.0.0 &
   APP_PID=$!
   echo "$(date -u +%T) [opencode] started (pid $APP_PID)"
 }
@@ -66,8 +81,6 @@ start_sshd
 start_app
 
 # ── PID-only watchdog ─────────────────────────
-# Checks every 5 s whether each PID is still alive.
-# Restarts the process if it has exited — no HTTP polling, no pkill loops.
 while true; do
   sleep 5
 
