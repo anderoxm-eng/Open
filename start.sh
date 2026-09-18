@@ -9,6 +9,8 @@ SSH_PORT=2222
 [ "$APP_PORT" = "$SSH_PORT" ] && APP_PORT=8080
 
 SSH_PASSWORD=${SSH_PASSWORD:-changeme123}
+OPENCODE_SERVER_PASSWORD=${OPENCODE_SERVER_PASSWORD:-$SSH_PASSWORD}
+export OPENCODE_SERVER_PASSWORD
 
 # ── Install OpenCode (once per container lifetime) ───
 if ! command -v opencode >/dev/null 2>&1; then
@@ -52,6 +54,8 @@ start_sshd() {
 }
 
 start_app() {
+  export BROWSER=none
+  export DISPLAY=""
   opencode web --port "$APP_PORT" &
   APP_PID=$!
   echo "$(date -u +%T) [opencode] started (pid $APP_PID)"
